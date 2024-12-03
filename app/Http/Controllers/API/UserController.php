@@ -24,95 +24,93 @@ class UserController extends Controller
     public function store(Request $request)
     {
 
-        try {
-            $payload = $request->validate([
-                'name' => ['required', 'string'],
-                'email' => ['required', 'email', 'unique:users,email'],
-                'password' => ['required', 'string', 'min:5'],
-            ]);
-    
-            // Kullanıcı oluşturma
-            $user = User::create([
-                'name' => $payload['name'],
-                'email' => $payload['email'],
-                'password' => bcrypt($payload['password']),
-            ]);
-    
-            return response()->json([
-                'message' => 'User created successfully',
-                'user' => $user,
-            ], 201);
-    
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Validation Error',
-                'errors' => $e
-            ], 422);
-        }
+        $payload = $request->validate([
+            'name' => ['required', 'string'],
+            'email' => ['required', 'email', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:5'],
+        ]);
+
+        
+        $user = User::create([
+            'name' => $payload['name'],
+            'email' => $payload['email'],
+            'password' => bcrypt($payload['password']), 
+        ]);
+
+        return response()->json([
+            'message' => 'User created successfully',
+            'user' => $user,
+        ], 201);
+     
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(User $user)
+    public function show($id)
     {
-        return response()->json($user);
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        return response()->json($user, 200);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, User $user)
+    public function update(Request $request, $id)
     {
 
-        try {
+        
+        $user = User::findOrFail($id);
 
-            $payload = $request->validate([
-                'name' => ['required', 'string'],
-                'email' => ['required', 'email', 'unique:users,email'],
-                'password' => ['required', 'string', 'min:5'],
-            ]);
-
-
-        $user->update([
-              'name' => $payload['name'],
-              'email' => $payload['email'],
-              'password' => bcrypt($payload['password']),
+     
+        $payload = $request->validate([
+            'name' => ['nullable', 'string'],
+            'email' => ['nullable', 'email', "unique:users,email,{$id}"],
+            'password' => ['nullable', 'string', 'min:5'],
         ]);
 
-        return response()->json($user);
-        
-    } catch(Exception $e) {
+        $user->update(array_filter([
+            'name' => $payload['name'] ?? $user->name,
+            'email' => $payload['email'] ?? $user->email,
+            'password' => isset($payload['password']) ? bcrypt($payload['password']) : $user->password,
+        ]));
 
         return response()->json([
-            'message' => 'Validation Error',
-            'errors' => $e
-        ], 422);
-    }
+            'message' => 'User updated successfully',
+            'user' => $user,
+        ], 200);
+        
+    
 
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(User $user)
+    public function destroy($id)
     {
 
         try {
-            
-            $user->delete();
-            return response()->json(null, 204);
 
-        } catch(Exception $e) {
+            $user = User::findOrFail($id);
+    
+            $user->delete();
 
             return response()->json([
-                'message' => 'Unable to perform your request',
-                'errors' => $e
-            ], 422);
-
-        }
-       
-
+                'message' => 'User deleted successfully',
+            ], 200);
     
-    }
+        } catch (\Exception $e) {
+            // Diğer hatalar
+            return response()->json([
+                'message' => 'An unexpected error occurred',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+        }
+
 }
